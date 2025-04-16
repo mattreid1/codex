@@ -2,6 +2,7 @@ export enum AutoApprovalMode {
   SUGGEST = "suggest",
   AUTO_EDIT = "auto-edit",
   FULL_AUTO = "full-auto",
+  UNLEASHED = "unleashed",
 }
 
 export enum FullAutoErrorMode {

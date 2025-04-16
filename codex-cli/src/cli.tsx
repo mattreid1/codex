@@ -47,10 +47,11 @@ const cli = meow(
     -i, --image <path>         Path(s) to image files to include as input
     -v, --view <rollout>       Inspect a previously saved rollout instead of starting a session
     -q, --quiet                Non-interactive mode that only prints the assistant's final output
-    -a, --approval-mode <mode> Override the approval policy: 'suggest', 'auto-edit', or 'full-auto'
+    -a, --approval-mode <mode> Override the approval policy: 'suggest', 'auto-edit', 'full-auto', or 'unleashed'
 
     --auto-edit                Automatically approve file edits; still prompt for commands
     --full-auto                Automatically approve edits and commands when executed in the sandbox
+    --unleashed                Automatically approve edits and commands without sandbox restrictions (enables network access)
 
     --no-project-doc           Do not automatically include the repository's 'codex.md'
     --project-doc <file>       Include an additional markdown file at <file> as context
@@ -98,11 +99,16 @@ const cli = meow(
         description:
           "Automatically run commands in a sandbox; only prompt for failures.",
       },
+      unleashed: {
+        type: "boolean",
+        description:
+          "Automatically run commands without sandbox restrictions; enables network access.",
+      },
       approvalMode: {
         type: "string",
         aliases: ["a"],
         description:
-          "Determine the approval mode for Codex (default: suggest) Values: suggest, auto-edit, full-auto",
+          "Determine the approval mode for Codex (default: suggest) Values: suggest, auto-edit, full-auto, unleashed",
       },
       noProjectDoc: {
         type: "boolean",
@@ -124,7 +130,7 @@ const cli = meow(
       fullContext: {
         type: "boolean",
         aliases: ["f"],
-        description: `Run in full-context editing approach. The model is given the whole code 
+        description: `Run in full-context editing approach. The model is given the whole code
           directory as context and performs changes in one go without acting.`,
       },
     },
@@ -243,20 +249,23 @@ if (quietMode) {
 // Determine the approval policy to use in interactive mode.
 //
 // Priority (highest → lowest):
-// 1. --fullAuto – run everything automatically in a sandbox.
-// 2. --dangerouslyAutoApproveEverything – run everything **without** a sandbox
+// 1. --unleashed – run everything automatically without sandbox restrictions.
+// 2. --fullAuto – run everything automatically in a sandbox.
+// 3. --dangerouslyAutoApproveEverything – run everything **without** a sandbox
 //    or prompts.  This is intended for completely trusted environments.  Since
 //    it is more dangerous than --fullAuto we deliberately give it lower
 //    priority so a user specifying both flags still gets the safer behaviour.
-// 3. --autoEdit – automatically approve edits, but prompt for commands.
-// 4. Default – suggest mode (prompt for everything).
+// 4. --autoEdit – automatically approve edits, but prompt for commands.
+// 5. Default – suggest mode (prompt for everything).
 
 const approvalPolicy: ApprovalPolicy =
-  cli.flags.fullAuto || cli.flags.approvalMode === "full-auto"
-    ? AutoApprovalMode.FULL_AUTO
-    : cli.flags.autoEdit
-    ? AutoApprovalMode.AUTO_EDIT
-    : AutoApprovalMode.SUGGEST;
+  cli.flags.unleashed || cli.flags.approvalMode === "unleashed"
+    ? AutoApprovalMode.UNLEASHED
+    : cli.flags.fullAuto || cli.flags.approvalMode === "full-auto"
+      ? AutoApprovalMode.FULL_AUTO
+      : cli.flags.autoEdit
+        ? AutoApprovalMode.AUTO_EDIT
+        : AutoApprovalMode.SUGGEST;
 
 preloadModels();
 

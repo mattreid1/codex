@@ -61,7 +61,14 @@ export type ApprovalPolicy =
    * where network access is disabled and writes are limited to a specific set
    * of paths.
    */
-  | "full-auto";
+  | "full-auto"
+
+  /**
+   * All commands are auto-approved and executed without any sandbox restrictions.
+   * Network access is enabled and commands can write to any directory.
+   * This mode is potentially dangerous and should be used with caution.
+   */
+  | "unleashed";
 
 /**
  * Tries to assess whether a command is safe to run, though may defer to the
@@ -127,24 +134,46 @@ export function canAutoApprove(
       }
     }
 
-    return policy === "full-auto"
-      ? {
+    switch (policy) {
+      case "full-auto":
+        return {
           type: "auto-approve",
           reason: "Full auto mode",
           group: "Running commands",
           runInSandbox: true,
-        }
-      : { type: "ask-user" };
+        };
+
+      case "unleashed":
+        return {
+          type: "auto-approve",
+          reason: "Unleashed mode",
+          group: "Running commands",
+          runInSandbox: false,
+        };
+
+      default:
+        return { type: "ask-user" };
+    }
   } catch (err) {
-    if (policy === "full-auto") {
-      return {
-        type: "auto-approve",
-        reason: "Full auto mode",
-        group: "Running commands",
-        runInSandbox: true,
-      };
-    } else {
-      return { type: "ask-user" };
+    switch (policy) {
+      case "full-auto":
+        return {
+          type: "auto-approve",
+          reason: "Full auto mode",
+          group: "Running commands",
+          runInSandbox: true,
+        };
+
+      case "unleashed":
+        return {
+          type: "auto-approve",
+          reason: "Unleashed mode",
+          group: "Running commands",
+          runInSandbox: false,
+        };
+
+      default:
+        return { type: "ask-user" };
     }
   }
 }
@@ -158,6 +187,14 @@ function canAutoApproveApplyPatch(
     case "full-auto":
       // Continue to see if this can be auto-approved.
       break;
+    case "unleashed":
+      return {
+        type: "auto-approve",
+        reason: "Unleashed mode",
+        group: "Editing",
+        runInSandbox: false,
+        applyPatch: { patch: applyPatchArg },
+      };
     case "suggest":
       return {
         type: "ask-user",
